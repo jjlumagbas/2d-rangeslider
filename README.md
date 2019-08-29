@@ -2,7 +2,7 @@
 
 **[Demo](https://2d-rangeslider-qyuheaispc.now.sh/)**
 
-Select weights for multiple variables simultaneously by dragging a node closer to or farther from a variable.
+Select weights for multiple variables simultaneously by dragging a node closer to or farther from a variable. Implemented in [D3.js](https://d3js.org).
 
 ![2D Range Slider in action](https://2d-rangeslider-qyuheaispc.now.sh/2d-rangeslider.jpg "2D Range Slider in action")
 

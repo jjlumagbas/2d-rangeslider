@@ -157,11 +157,11 @@
 
     var dummyNodes = [a, b, c, d, e];
 
-    var authors = [a, b];
+    var nodes = [a, b];
 
     var radius = 150;
     var pos = initCoords(radius);
-    var namesData = initNamesData(authors, pos[authors.length]);
+    var nodeData = initNodeData(nodes, pos[nodes.length]);
 
     var svg = d3.select("#slider"),
       width = +svg.attr("width"),
@@ -221,14 +221,14 @@
     }
 
 
-    function initNamesData(authors, pos) {
-      var data = authors.map(function (author, i) {
+    function initNodeData(nodes, pos) {
+      var data = nodes.map(function (node, i) {
         var x = pos[i][0];
         var y = pos[i][1];
 
         return {
-          name: author.name,
-          id: author.id,
+          name: node.name,
+          id: node.id,
           distance: computeDistance(0, 0, x, y),
           x: x,
           y: y
@@ -236,26 +236,26 @@
       });
 
       // TODO Refactor duplicate code computing weight
-      var totalDistance = data.reduce((sum, author) => sum + author.distance, 0);
+      var totalDistance = data.reduce((sum, node) => sum + node.distance, 0);
 
-      return data.map(function (author) {
-        author.weight = (1 - (author.distance / totalDistance)) / (authors.length - 1);
-        return author;
+      return data.map(function (node) {
+        node.weight = (1 - (node.distance / totalDistance)) / (nodes.length - 1);
+        return node;
       });
     }
 
     function updateWeights(x, y) {
-      namesData = namesData.map(function (author) {
-        author.distance = computeDistance(x, y, author.x, author.y);
-        return author;
+      nodeData = nodeData.map(function (node) {
+        node.distance = computeDistance(x, y, node.x, node.y);
+        return node;
       });
 
       // TODO Refactor duplicate code computing weight
-      var totalDistance = namesData.reduce((sum, author) => sum + author.distance, 0);
+      var totalDistance = nodeData.reduce((sum, node) => sum + node.distance, 0);
 
-      namesData = namesData.map(function (author) {
-        author.weight = (1 - (author.distance / totalDistance)) / (authors.length - 1);
-        return author;
+      nodeData = nodeData.map(function (node) {
+        node.weight = (1 - (node.distance / totalDistance)) / (nodes.length - 1);
+        return node;
       });
 
       updateList();
@@ -308,7 +308,7 @@
     }
 
     function updateLinks() {
-      links = links.data(namesData, d => d.id);
+      links = links.data(nodeData, d => d.id);
       links.exit().remove();
       links = links.enter().append("line")
         .attr("x1", 0)
@@ -321,7 +321,7 @@
 
 
     function updateNames() {
-      nameNodes = nameNodes.data(namesData, d => d.id)
+      nameNodes = nameNodes.data(nodeData, d => d.id)
       nameNodes.exit().remove();
       nameNodes = nameNodes.enter().append("text")
         .text(d => d.name)
@@ -332,7 +332,7 @@
     }
 
     function updateList() {
-      listItems = listItems.data(namesData, d => d.id)
+      listItems = listItems.data(nodeData, d => d.id)
       listItems.exit().remove();
       listItems = listItems.enter().append("tr")
         .merge(listItems)
@@ -364,8 +364,8 @@
     }
 
     function spread() {
-      namesData = initNamesData(authors, pos[authors.length]);
-      nameNodes.data(namesData)
+      nodeData = initNodeData(nodes, pos[nodes.length]);
+      nameNodes.data(nodeData)
         .attr("x", 0)
         .attr("y", 0)
         .transition()
@@ -373,7 +373,7 @@
         .attr("y", d => d.y)
         .style("opacity", 100);
 
-      links.data(namesData)
+      links.data(nodeData)
         .attr("x2", 0)
         .attr("y2", 0)
         .transition()
@@ -397,41 +397,41 @@
     }
 
     function addNode() {
-      if (authors.length < 5) {
-        add(dummyNodes[authors.length]);
+      if (nodes.length < 5) {
+        add(dummyNodes[nodes.length]);
       }
 
-      if (authors.length > 4) {
+      if (nodes.length > 4) {
         addButton.attr('disabled', '');
       }
 
-      if (authors.length > 2) {
+      if (nodes.length > 2) {
         removeButton.attr('disabled', null);
       }
     }
 
     function removeNode() {
-      if (authors.length > 2) {
-        remove(dummyNodes[authors.length - 1]);
+      if (nodes.length > 2) {
+        remove(dummyNodes[nodes.length - 1]);
       }
 
-      if (authors.length < 5) {
+      if (nodes.length < 5) {
         addButton.attr('disabled', null);
       }
 
-      if (authors.length < 3) {
+      if (nodes.length < 3) {
         removeButton.attr('disabled', '');
       }
     }
 
-    function add(author) {
-      if (authors.length < 5) {
-        authors.push(author);
+    function add(node) {
+      if (nodes.length < 5) {
+        nodes.push(node);
         center();
 
-        if (authors.length >= 2) {
+        if (nodes.length >= 2) {
           d3.timeout(function () {
-            namesData = initNamesData(authors, pos[authors.length]);
+            nodeData = initNodeData(nodes, pos[nodes.length]);
             update();
             spread();
           }, 300);
@@ -441,13 +441,13 @@
       }
     }
 
-    function remove(author) {
-      authors = authors.filter(a => a.id !== author.id);
+    function remove(node) {
+      nodes = nodes.filter(a => a.id !== node.id);
       center();
 
-      if (authors.length >= 2) {
+      if (nodes.length >= 2) {
         d3.timeout(function () {
-          namesData = initNamesData(authors, pos[authors.length]);
+          nodeData = initNodeData(nodes, pos[nodes.length]);
           update();
           spread();
         }, 300);

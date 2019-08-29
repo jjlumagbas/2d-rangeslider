@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>2D Range Slider</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <style>
+      .title {
+        position: relative;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .gen-button {
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
+      }
+
+      #slider {
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .active {
+        stroke: #000;
+        stroke-width: 1px;
+      }
+
+      .link {
+        stroke: hsl(0, 0%, 48%);
+        stroke-width: 2;
+      }
+
+      text {
+        font-family: BlinkMacSystemFont, -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+        font-size: .9em;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: .05em;
+        fill: hsl(0, 0%, 29%);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .width-m {
+        max-width: 940px;
+      }
+
+      .width-l {
+        max-width: 1080px;
+      }
+
+      .logo {
+        margin-right: 1rem;
+      }
+
+      .logo-text {
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .drag-text {
+        text-transform: lowercase;
+        font-size: .8em;
+        font-weight: 400;
+        fill: hsl(0, 0%, 40%);
+      }
+    </style>
+  </head>
+
+  <body>
+    <section class="hero is-fullheight">
+
+      <div class="hero-head">
+        <div class="container">
+          <nav class="navbar" role="navigation" aria-label="main navigation">
+            <div class="navbar-brand">
+              <a class="navbar-item" href="#">
+                <h1 class="logo-text">2D Range Slider</h1>
+              </a>
+            </div>
+            <div class="navbar-menu">
+              <div class="navbar-start">
+                <p class="navbar-item">Select weights for multiple variables simultaneously</p>
+              </div>
+
+              <div class="navbar-end">
+                <a class="navbar-item" href="https://github.com/jjlumagbas/2d-rangeslider">Source on Github</a>
+              </div>
+            </div>
+          </nav>
+        </div>
+      </div>
+
+      <div class="hero-body">
+        <div class="container">
+          <div class="columns">
+            <div class="column has-text-right-desktop">
+              <svg id="slider" width="300" height="350"></svg>
+            </div>
+
+            <div class="column">
+              <div class="field is-grouped">
+                <div class="control">
+                  <button id="add-button" class="button is-link" onclick="addNode()">More</button>
+                </div>
+                <div class="control">
+                  <button id="remove-button" class="button is-danger" onclick="removeNode()" disabled>Fewer</button>
+                </div>
+              </div>
+
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Variable</th>
+                    <th>Weight</th>
+                    <th>Distance</th>
+                  </tr>
+                </thead>
+                <tbody id="list">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="hero-foot">
+        <footer class="footer">
+          <div class=" content has-text-centered">
+            <p>
+              by <strong>JJ Lumagbas</strong> | <a href="https://github.com/jjlumagbas/2d-rangeslider">Source on
+                Github</a>
+            </p>
+          </div>
+        </footer>
+      </div>
+
+    </section>
+
+  </body>
+  <script>
+
+    var a = { name: "A", id: 1 };
+    var b = { name: "B", id: 2 };
+    var c = { name: "C", id: 3 };
+    var d = { name: "D", id: 4 };
+    var e = { name: "E", id: 5 };
+
+    var dummyNodes = [a, b, c, d, e];
+
+    var authors = [a, b];
+
+    var radius = 150;
+    var pos = initCoords(radius);
+    var namesData = initNamesData(authors, pos[authors.length]);
+
+    var svg = d3.select("#slider"),
+      width = +svg.attr("width"),
+      height = +svg.attr("height");
+
+    var g = svg.append("g").attr("transform", "translate(" + width / 2 + "," + height / 2 + ")")
+
+    var links = g.append("g").attr("class", "link").selectAll("line");
+    var nameNodes = g.append("g").selectAll("text");
+
+    var listItems = d3.select("#list").selectAll("li");
+
+    var addButton = d3.select("#add-button");
+    var removeButton = d3.select("#remove-button");
+
+    update();
+
+    var circle = g.append("circle")
+      .attr("cx", 0)
+      .attr("cy", 0)
+      .attr("r", 10)
+      .attr("fill", "hsl(0, 0%, 48%)")
+      .on("mouseover", function (d) {
+        d3.select(this).style("cursor", "move");
+        hideTooltip();
+      })
+      .on("mouseout", function (d) { })
+      .call(d3.drag().on("drag", dragged));
+
+    var dragToolTip = g.append("text")
+      .attr("class", "drag-text")
+      .attr("x", circle.attr("cx") + 15)
+      .attr("y", circle.attr("cy") + 4)
+      .text("< Drag");
+
+
+    svg.on("click", clicked)
+
+    function initCoords(r) {
+      var angles2 = [270, 90]; // 2
+      var angles3 = [270, 30, 150]; // 3
+      var angles4 = [330, 30, 149, 210]; // 4
+      var angles5 = [270, 330, 30, 150, 210]; // 5 
+
+      var angles = [[], [], angles2, angles3, angles4, angles5];
+
+      var degToRad = a => a * Math.PI / 180;
+      var calcXY = a => [r * Math.cos(a), r * Math.sin(a)];
+
+      return angles.map(as => as.map(degToRad).map(calcXY));
+    }
+
+    function computeDistance(x1, y1, x2, y2) {
+      var distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+
+      return distance;
+    }
+
+
+    function initNamesData(authors, pos) {
+      var data = authors.map(function (author, i) {
+        var x = pos[i][0];
+        var y = pos[i][1];
+
+        return {
+          name: author.name,
+          id: author.id,
+          distance: computeDistance(0, 0, x, y),
+          x: x,
+          y: y
+        };
+      });
+
+      // TODO Refactor duplicate code computing weight
+      var totalDistance = data.reduce((sum, author) => sum + author.distance, 0);
+
+      return data.map(function (author) {
+        author.weight = (1 - (author.distance / totalDistance)) / (authors.length - 1);
+        return author;
+      });
+    }
+
+    function updateWeights(x, y) {
+      namesData = namesData.map(function (author) {
+        author.distance = computeDistance(x, y, author.x, author.y);
+        return author;
+      });
+
+      // TODO Refactor duplicate code computing weight
+      var totalDistance = namesData.reduce((sum, author) => sum + author.distance, 0);
+
+      namesData = namesData.map(function (author) {
+        author.weight = (1 - (author.distance / totalDistance)) / (authors.length - 1);
+        return author;
+      });
+
+      updateList();
+    }
+
+    function dragged(d) {
+      var x = d3.event.x;
+      var y = d3.event.y;
+      d3.select(this).attr("cx", x).attr("cy", y);
+      links.attr("x1", x).attr("y1", y);
+
+      moveTooltip(x, y);
+      updateWeights(x, y);
+    }
+
+    function clicked() {
+      var coords = d3.mouse(this);
+      coords[0] -= width / 2;
+      coords[1] -= height / 2;
+      circle.attr("cx", coords[0]).attr("cy", coords[1]);
+      links.attr("x1", coords[0]).attr("y1", coords[1]);
+
+      moveTooltip(coords[0], coords[1]);
+      updateWeights(coords[0], coords[1]);
+    }
+
+    function moveTooltip(x, y) {
+      dragToolTip.transition().attr("x", x + 15)
+        .attr("y", y + 4);
+    }
+
+    function hideTooltip() {
+      dragToolTip.transition().attr("opacity", 0);
+    }
+
+    function showTooltip() {
+      dragToolTip.transition().attr("opacity", 100);
+    }
+
+
+    function update() {
+      updateLinks();
+      updateNames();
+      updateList();
+    }
+
+    // Offset line end so there's a gap between line and name
+    function lineEnd(d) {
+      return d.y > 0 ? d.y - 20 : d.y + 10;
+    }
+
+    function updateLinks() {
+      links = links.data(namesData, d => d.id);
+      links.exit().remove();
+      links = links.enter().append("line")
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", d => d.x)
+        .attr("y2", lineEnd)
+        .merge(links);
+    }
+
+
+
+    function updateNames() {
+      nameNodes = nameNodes.data(namesData, d => d.id)
+      nameNodes.exit().remove();
+      nameNodes = nameNodes.enter().append("text")
+        .text(d => d.name)
+        .attr("text-anchor", "middle")
+        .attr("x", d => d.x)
+        .attr("y", d => d.y)
+        .merge(nameNodes);
+    }
+
+    function updateList() {
+      listItems = listItems.data(namesData, d => d.id)
+      listItems.exit().remove();
+      listItems = listItems.enter().append("tr")
+        .merge(listItems)
+        .html(d =>
+          `<td>${d.name}</td>
+          <td>${d.weight}</td>
+          <td>${d.distance}</td>`
+        );
+    }
+
+    function center() {
+      // hideTooltip();
+      moveTooltip(0, 0);
+
+      circle.transition()
+        .attr("cx", 0)
+        .attr("cy", 0);
+
+      nameNodes.transition()
+        .style("opacity", 0)
+        .attr("x", 0)
+        .attr("y", 0);
+
+      links.transition()
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", 0)
+        .attr("y2", 0)
+    }
+
+    function spread() {
+      namesData = initNamesData(authors, pos[authors.length]);
+      nameNodes.data(namesData)
+        .attr("x", 0)
+        .attr("y", 0)
+        .transition()
+        .attr("x", d => d.x)
+        .attr("y", d => d.y)
+        .style("opacity", 100);
+
+      links.data(namesData)
+        .attr("x2", 0)
+        .attr("y2", 0)
+        .transition()
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", d => d.x)
+        .attr("y2", lineEnd);
+
+      showTooltip();
+    }
+
+    function randomizeWeights() {
+      var x = d3.randomUniform(-80, 80)();
+      var y = d3.randomUniform(-80, 80)();
+
+      circle.transition().attr("cx", x).attr("cy", y);
+      links.transition().attr("x1", x).attr("y1", y);
+
+      moveTooltip(x, y);
+      updateWeights(x, y);
+    }
+
+    function addNode() {
+      if (authors.length < 5) {
+        add(dummyNodes[authors.length]);
+      }
+
+      if (authors.length > 4) {
+        addButton.attr('disabled', '');
+      }
+
+      if (authors.length > 2) {
+        removeButton.attr('disabled', null);
+      }
+    }
+
+    function removeNode() {
+      if (authors.length > 2) {
+        remove(dummyNodes[authors.length - 1]);
+      }
+
+      if (authors.length < 5) {
+        addButton.attr('disabled', null);
+      }
+
+      if (authors.length < 3) {
+        removeButton.attr('disabled', '');
+      }
+    }
+
+    function add(author) {
+      if (authors.length < 5) {
+        authors.push(author);
+        center();
+
+        if (authors.length >= 2) {
+          d3.timeout(function () {
+            namesData = initNamesData(authors, pos[authors.length]);
+            update();
+            spread();
+          }, 300);
+
+
+        }
+      }
+    }
+
+    function remove(author) {
+      authors = authors.filter(a => a.id !== author.id);
+      center();
+
+      if (authors.length >= 2) {
+        d3.timeout(function () {
+          namesData = initNamesData(authors, pos[authors.length]);
+          update();
+          spread();
+        }, 300);
+      }
+    }
+  </script>
+
+</html>
